@@ -13,7 +13,7 @@ import WidgetKit
 import AppIntents
 
 /// viewcontroller for the home screen
-final class RootViewController: UIViewController, ObservableObject {
+final class RootViewController: UIViewController, ObservableObject, OnboardingHostingControllerDelegate {
     
     // MARK: - Properties - Outlets and Actions for buttons and labels in home screen
     
@@ -653,6 +653,10 @@ final class RootViewController: UIViewController, ObservableObject {
     }
     
     override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        // Check if onboarding needs to be shown
+        checkAndShowOnboardingIfNeeded()
         
         // remove titles from tabbar items
         self.tabBarController?.cleanTitles()
@@ -4184,4 +4188,44 @@ extension RootViewController: UIGestureRecognizerDelegate {
         
     }
     
+}
+
+// MARK: - Onboarding Support
+
+extension RootViewController {
+    
+    private func checkAndShowOnboardingIfNeeded() {
+        // Only show onboarding if it hasn't been completed and we're not already presenting a modal
+        guard !UserDefaults.standard.onboardingCompleted && presentedViewController == nil else {
+            return
+        }
+        
+        // Delay the presentation slightly to ensure the view is fully loaded
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.showOnboarding()
+        }
+    }
+    
+    private func showOnboarding() {
+        let onboardingController = OnboardingHostingController()
+        onboardingController.delegate = self
+        
+        // Pass the bluetooth peripheral manager if available
+        if let bluetoothPeripheralManager = self.bluetoothPeripheralManager {
+            onboardingController.setBluetoothPeripheralManager(bluetoothPeripheralManager)
+        }
+        
+        present(onboardingController, animated: true)
+    }
+    
+    // MARK: - OnboardingHostingControllerDelegate
+    
+    func onboardingDidComplete() {
+        // Dismiss the onboarding view
+        dismiss(animated: true) {
+            // Refresh the UI to reflect any changes from onboarding
+            self.updateLabelsAndChart(overrideApplicationState: true)
+            self.updateDataSourceInfo()
+        }
+    }
 }

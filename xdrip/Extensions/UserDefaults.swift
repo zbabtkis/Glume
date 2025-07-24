@@ -63,6 +63,8 @@ extension UserDefaults {
         
         /// bloodglucose unit
         case bloodGlucoseUnitIsMgDl = "bloodGlucoseUnit"
+        /// has the onboarding process been completed?
+        case onboardingCompleted = "onboardingCompleted"
         /// should notification be shown with reading yes or no
         case showReadingInNotification = "showReadingInNotification"
         /// should readings be shown in app badge yes or no
@@ -2477,6 +2479,18 @@ extension UserDefaults {
         }
         set {
             set(newValue, forKey: Key.updateSnoozeStatus.rawValue)
+        }
+    }
+    
+    // MARK: - Onboarding
+    
+    /// has the onboarding process been completed?
+    @objc dynamic var onboardingCompleted: Bool {
+        get {
+            return bool(forKey: Key.onboardingCompleted.rawValue)
+        }
+        set {
+            set(newValue, forKey: Key.onboardingCompleted.rawValue)
         }
     }
 }
