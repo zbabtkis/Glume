@@ -6,6 +6,31 @@ for info, send an email to xdrip@proximus.be
 
 Current Status :
 
+## New UX Features (v2024.1)
+
+- **Onboarding Experience**: New user wizard for easy CGM setup
+  - Step-by-step guide for device selection and configuration
+  - Automated connectivity testing
+  - Support for all CGM transmitter types
+  
+- **Simplified Dashboard**: Clean, minimal interface focusing on essential data
+  - Current glucose reading with trend indicators
+  - 6-hour glucose chart
+  - Key metrics (average, time in range)
+  - Real-time alerts for high/low values
+
+- **Enhanced Error Handling**: User-friendly error messages with recovery suggestions
+  - Bluetooth connectivity issues
+  - Device setup problems
+  - Data synchronization errors
+
+- **Performance Optimizations**: Improved Core Data queries for faster dashboard loading
+  - Optimized glucose data fetching
+  - Efficient chart rendering
+  - Background data refresh
+
+## Core Features
+
 - Supported transmitters :
     - Dexcom G4 with xBridge       
     - Dexcom G5 and G6
