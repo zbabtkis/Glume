@@ -31,8 +31,12 @@ class OnboardingViewModel: ObservableObject {
     @Published var isScanning: Bool = false
     @Published var isTestingConnection: Bool = false
     @Published var connectionTestPassed: Bool = false
+    @Published var currentError: GlumeError?
     @Published var showingError: Bool = false
-    @Published var errorMessage: String = ""
+    
+    var errorMessage: String {
+        return currentError?.errorDescription ?? ""
+    }
     
     // MARK: - Computed Properties
     
@@ -139,12 +143,23 @@ class OnboardingViewModel: ObservableObject {
         guard let selectedCGMType = selectedCGMType else { return }
         
         isScanning = true
+        currentError = nil
+        showingError = false
         
-        // Simulate scanning process
+        // Simulate scanning process with error handling
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             self.isScanning = false
-            // For now, we'll assume scanning was successful
-            // In a real implementation, this would interface with BluetoothPeripheralManager
+            
+            // Simulate potential scanning errors
+            let simulateError = Bool.random() && false // Set to true to test error scenarios
+            
+            if simulateError {
+                self.currentError = .deviceNotFound
+                self.showingError = true
+            } else {
+                // Success - proceed to next step
+                // In a real implementation, this would check actual device discovery
+            }
         }
     }
     
@@ -152,18 +167,40 @@ class OnboardingViewModel: ObservableObject {
         startConnectionTest()
     }
     
+    func showError(_ error: GlumeError) {
+        currentError = error
+        showingError = true
+    }
+    
+    func clearError() {
+        currentError = nil
+        showingError = false
+    }
+    
     // MARK: - Private Methods
     
     private func startConnectionTest() {
         isTestingConnection = true
         connectionTestPassed = false
+        currentError = nil
+        showingError = false
         
-        // Simulate connection test
+        // Simulate connection test with potential errors
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             self.isTestingConnection = false
-            // For now, we'll simulate a successful connection
-            // In a real implementation, this would test actual device connectivity
-            self.connectionTestPassed = true
+            
+            // Simulate potential connection errors
+            let simulateError = Bool.random() && false // Set to true to test error scenarios
+            
+            if simulateError {
+                self.currentError = .connectionTimeout
+                self.showingError = true
+                self.connectionTestPassed = false
+            } else {
+                // For now, we'll simulate a successful connection
+                // In a real implementation, this would test actual device connectivity
+                self.connectionTestPassed = true
+            }
         }
     }
     

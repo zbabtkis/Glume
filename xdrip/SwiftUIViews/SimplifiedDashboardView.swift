@@ -12,11 +12,22 @@ import Charts
 struct SimplifiedDashboardView: View {
     
     @ObservedObject var viewModel: SimplifiedDashboardViewModel
+    @StateObject private var errorManager = ErrorManager()
     
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
+                    
+                    // Error banner (if any)
+                    if let error = errorManager.currentError {
+                        ErrorBanner(error: error) {
+                            errorManager.clearError()
+                        }
+                    }
+                    
+                    // Connectivity status
+                    ConnectivityStatusCard(status: viewModel.connectivityStatus)
                     
                     // Current Reading Card
                     CurrentReadingCard(
@@ -62,6 +73,7 @@ struct SimplifiedDashboardView: View {
         }
         .onAppear {
             viewModel.startRealTimeUpdates()
+            viewModel.setErrorManager(errorManager)
         }
         .onDisappear {
             viewModel.stopRealTimeUpdates()
@@ -334,4 +346,28 @@ extension GlucoseChartType {
 
 #Preview {
     SimplifiedDashboardView(viewModel: SimplifiedDashboardViewModel())
+}
+
+// MARK: - Connectivity Status Card
+
+struct ConnectivityStatusCard: View {
+    let status: ConnectivityStatus
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: status.iconName)
+                .foregroundColor(status.color)
+                .imageScale(.medium)
+            
+            Text(status.description)
+                .font(.callout)
+                .foregroundColor(status.color)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(status.color.opacity(0.1))
+        .cornerRadius(8)
+    }
 }

@@ -22,6 +22,14 @@ class SimplifiedDashboardViewModel: ObservableObject {
     @Published var averageGlucose: String = "--"
     @Published var timeInRange: String = "--"
     @Published var activeAlerts: [GlucoseAlert] = []
+    @Published var connectivityStatus: ConnectivityStatus = .disconnected
+    
+    // MARK: - Private Properties
+    
+    private var bgReadingsAccessor: BgReadingsAccessor?
+    private var updateTimer: Timer?
+    private var cancellables = Set<AnyCancellable>()
+    private var errorManager: ErrorManager?
     
     // MARK: - Computed Properties
     
@@ -55,6 +63,13 @@ class SimplifiedDashboardViewModel: ObservableObject {
     private var updateTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     
+    // MARK: - Private Properties
+    
+    private var bgReadingsAccessor: BgReadingsAccessor?
+    private var updateTimer: Timer?
+    private var cancellables = Set<AnyCancellable>()
+    private var errorManager: ErrorManager?
+    
     // MARK: - Initialization
     
     init() {
@@ -66,6 +81,10 @@ class SimplifiedDashboardViewModel: ObservableObject {
     func setBgReadingsAccessor(_ accessor: BgReadingsAccessor) {
         self.bgReadingsAccessor = accessor
         refreshDataSync()
+    }
+    
+    func setErrorManager(_ manager: ErrorManager) {
+        self.errorManager = manager
     }
     
     func startRealTimeUpdates() {
@@ -100,34 +119,40 @@ class SimplifiedDashboardViewModel: ObservableObject {
     
     private func refreshDataSync() {
         guard let bgReadingsAccessor = bgReadingsAccessor else { 
+            connectivityStatus = .error(.cgmNotConfigured)
+            errorManager?.showError(.cgmNotConfigured)
             return 
         }
         
-        // Get the latest reading
-        let latestReadings = bgReadingsAccessor.get2LatestBgReadings(minimumTimeIntervalInMinutes: 4.0)
+        connectivityStatus = .connecting
         
-        if let latestReading = latestReadings.first {
-            updateCurrentReading(latestReading)
-            
-            // Calculate trend if we have two readings
-            if latestReadings.count > 1 {
-                let previousReading = latestReadings[1]
-                currentTrend = calculateTrend(current: latestReading, previous: previousReading)
+        do {
+            // Get the latest valid reading using optimized method
+            if let latestReading = bgReadingsAccessor.getMostRecentValidBgReading(forSensor: nil) {
+                updateCurrentReading(latestReading)
+                
+                // Get second latest reading for trend calculation
+                let twoLatestReadings = bgReadingsAccessor.get2LatestBgReadings(minimumTimeIntervalInMinutes: 4.0)
+                if twoLatestReadings.count > 1 {
+                    currentTrend = calculateTrend(current: twoLatestReadings[0], previous: twoLatestReadings[1])
+                }
+                
+                connectivityStatus = .connected
+            } else {
+                connectivityStatus = .disconnected
             }
+            
+            // Get readings for the chart (last 6 hours) using optimized method
+            let chartReadings = bgReadingsAccessor.getLatestBgReadingsForDashboard(hours: 6.0, forSensor: nil)
+            
+            updateChartData(chartReadings)
+            updateMetrics(chartReadings)
+            updateAlerts(chartReadings.first)
+            
+        } catch {
+            connectivityStatus = .error(.dataReadError)
+            errorManager?.handleDataError(error)
         }
-        
-        // Get readings for the chart (last 6 hours)
-        let chartReadings = bgReadingsAccessor.getLatestBgReadings(
-            limit: 72, // Assuming 5-minute intervals, 72 readings = 6 hours
-            fromDate: Date(timeIntervalSinceNow: -6 * 3600),
-            forSensor: nil,
-            ignoreRawData: true,
-            ignoreCalculatedValue: false
-        )
-        
-        updateChartData(chartReadings)
-        updateMetrics(chartReadings)
-        updateAlerts(latestReadings.first)
     }
     
     private func updateCurrentReading(_ reading: BgReading) {

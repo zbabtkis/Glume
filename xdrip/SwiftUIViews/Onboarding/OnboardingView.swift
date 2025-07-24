@@ -64,9 +64,25 @@ struct OnboardingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
             .alert("Error", isPresented: $viewModel.showingError) {
-                Button("OK") { }
+                Button("OK") { 
+                    viewModel.clearError()
+                }
+                if viewModel.currentError == .deviceNotFound {
+                    Button("Try Again") {
+                        viewModel.clearError()
+                        viewModel.startScanning()
+                    }
+                }
             } message: {
-                Text(viewModel.errorMessage)
+                if let error = viewModel.currentError {
+                    VStack(alignment: .leading) {
+                        Text(error.errorDescription ?? "Unknown error")
+                        if let recoverySuggestion = error.recoverySuggestion {
+                            Text(recoverySuggestion)
+                                .font(.caption)
+                        }
+                    }
+                }
             }
         }
     }

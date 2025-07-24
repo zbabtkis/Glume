@@ -265,4 +265,80 @@ class BgReadingsAccessor: ObservableObject {
         return bgReadings
     }
     
+    /// gets latest BgReadings, optimized for dashboard display
+    /// - parameters:
+    ///     - hours: number of hours of data to fetch
+    ///     - forSensor: sensor for which reading is asked, if nil then sensor value is ignored
+    /// - returns: readings sorted by timestamp, descending (ie first is latest)
+    func getLatestBgReadingsForDashboard(hours: Double, forSensor sensor: Sensor?) -> [BgReading] {
+        
+        let fromDate = Date(timeIntervalSinceNow: -hours * 3600)
+        
+        let fetchRequest: NSFetchRequest<BgReading> = BgReading.fetchRequest()
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(BgReading.timeStamp), ascending: false)]
+        
+        // Create optimized predicate for non-zero calculated values within time range
+        var predicateFormat = "timeStamp > %@ AND calculatedValue != 0.0"
+        var predicateArgs: [Any] = [NSDate(timeIntervalSince1970: fromDate.timeIntervalSince1970)]
+        
+        if let sensor = sensor {
+            predicateFormat += " AND sensor.id == %@"
+            predicateArgs.append(sensor.id)
+        }
+        
+        fetchRequest.predicate = NSPredicate(format: predicateFormat, argumentArray: predicateArgs)
+        
+        // Estimate fetch limit based on 5-minute intervals + buffer
+        let estimatedReadingsCount = Int(hours * 12) + 20
+        fetchRequest.fetchLimit = estimatedReadingsCount
+        
+        var bgReadings = [BgReading]()
+        
+        coreDataManager.mainManagedObjectContext.performAndWait {
+            do {
+                bgReadings = try fetchRequest.execute()
+            } catch {
+                let fetchError = error as NSError
+                trace("in getLatestBgReadingsForDashboard, Unable to Execute BgReading Fetch Request : %{public}@", log: self.log, category: ConstantsLog.categoryApplicationDataBgReadings, type: .error, fetchError.localizedDescription)
+            }
+        }
+        
+        return bgReadings
+    }
+    
+    /// gets the most recent valid BgReading with calculated value
+    /// - parameters:
+    ///     - forSensor: sensor for which reading is asked, if nil then sensor value is ignored
+    /// - returns: most recent BgReading with non-zero calculated value
+    func getMostRecentValidBgReading(forSensor sensor: Sensor?) -> BgReading? {
+        
+        let fetchRequest: NSFetchRequest<BgReading> = BgReading.fetchRequest()
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(BgReading.timeStamp), ascending: false)]
+        fetchRequest.fetchLimit = 1
+        
+        var predicateFormat = "calculatedValue != 0.0"
+        var predicateArgs: [Any] = []
+        
+        if let sensor = sensor {
+            predicateFormat += " AND sensor.id == %@"
+            predicateArgs.append(sensor.id)
+        }
+        
+        fetchRequest.predicate = NSPredicate(format: predicateFormat, argumentArray: predicateArgs)
+        
+        var bgReading: BgReading?
+        
+        coreDataManager.mainManagedObjectContext.performAndWait {
+            do {
+                let results = try fetchRequest.execute()
+                bgReading = results.first
+            } catch {
+                let fetchError = error as NSError
+                trace("in getMostRecentValidBgReading, Unable to Execute BgReading Fetch Request : %{public}@", log: self.log, category: ConstantsLog.categoryApplicationDataBgReadings, type: .error, fetchError.localizedDescription)
+            }
+        }
+        
+        return bgReading
+    }
+
 }
